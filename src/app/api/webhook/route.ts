@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getPrisma } from '@/lib/prisma'
 import crypto from 'crypto'
 
 // Проверка подписи webhook
@@ -18,6 +18,8 @@ function verifyWebhookSignature(payload: string, signature: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    const prisma = getPrisma()
+
     const signature = request.headers.get('x-webhook-signature')
     const eventId = request.headers.get('x-webhook-event-id')
     
@@ -87,6 +89,8 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint для проверки статуса событий
 export async function GET(request: NextRequest) {
+  const prisma = getPrisma()
+
   const searchParams = request.nextUrl.searchParams
   const eventId = searchParams.get('eventId')
 

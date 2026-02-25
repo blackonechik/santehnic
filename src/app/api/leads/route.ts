@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getPrisma } from '@/lib/prisma'
 import { sendTelegramNotification, formatLeadMessage } from '@/lib/telegram'
 import { createConversionEvent } from '@/lib/events'
 
 export async function POST(request: NextRequest) {
   try {
+    const prisma = getPrisma()
+
     const body = await request.json()
     const { name, email, phone, consent } = body
 

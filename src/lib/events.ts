@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+import { getPrisma } from './prisma'
 import { Prisma } from '@prisma/client'
 
 export type EventType = 'landing_view' | 'cta_click' | 'lead_created'
@@ -16,6 +16,8 @@ export async function createConversionEvent({
   metadata,
   leadId,
 }: CreateEventParams) {
+  const prisma = getPrisma()
+
   return prisma.conversionEvent.create({
     data: {
       eventType,
@@ -27,6 +29,8 @@ export async function createConversionEvent({
 }
 
 export async function getEventStats() {
+  const prisma = getPrisma()
+
   const stats = await prisma.conversionEvent.groupBy({
     by: ['eventType'],
     _count: true,

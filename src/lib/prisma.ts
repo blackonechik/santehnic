@@ -8,7 +8,7 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const databaseUrl = process.env.DATABASE_URL
-  
+
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is required')
   }
@@ -27,8 +27,16 @@ function createPrismaClient() {
   return new PrismaClient({ adapter })
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient()
+export function getPrisma() {
+  if (globalForPrisma.prisma) {
+    return globalForPrisma.prisma
+  }
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
+  const prisma = createPrismaClient()
+
+  if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.prisma = prisma
+  }
+
+  return prisma
 }
