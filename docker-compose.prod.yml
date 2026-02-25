@@ -1,0 +1,77 @@
+# Production Docker Compose для VPS
+# Запуск: docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: plumber-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-plumber}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-plumber_secret_prod}
+      POSTGRES_DB: plumber_leads
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-plumber} -d plumber_leads"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - plumber-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: plumber-app
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-plumber}:${DB_PASSWORD:-plumber_secret_prod}@postgres:5432/plumber_leads
+      NEXT_PUBLIC_APP_URL: ${APP_URL:-https://your-domain.com}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - plumber-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.plumber.rule=Host(`${APP_HOST:-your-domain.com}`)"
+      - "traefik.http.routers.plumber.entrypoints=websecure"
+      - "traefik.http.routers.plumber.tls.certresolver=letsencrypt"
+      - "traefik.http.services.plumber.loadbalancer.server.port=3000"
+
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: always
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@your-domain.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_letsencrypt:/letsencrypt
+    networks:
+      - plumber-network
+
+volumes:
+  postgres_data:
+  traefik_letsencrypt:
+
+networks:
+  plumber-network:
+    driver: bridge
